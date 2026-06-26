@@ -1,0 +1,3 @@
+[submodule "gn10-can"]
+	path = gn10-can
+	url = https://github.com/ararobo/gn10-can.git
