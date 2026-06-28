@@ -68,7 +68,6 @@ void do_homing()
     vesc.comm_can_set_rpm(43, 0);
     */
 
-    //
     int32_t prev1 = -1, prev2 = -2;
     while (!(vesc.get_taco() == prev1 && prev1 == prev2)) {
         prev2 = prev1;
@@ -90,14 +89,13 @@ void setup()
     fdcan1_driver.init();
 
     vesc.init();
-
-    do_homing();
 }
 
 // 定義類
 float vesc_velo[4]            = {0.0f, 0.0f, 0.0f, 0.0f};
 float rpm_conversion_constant = -45000.0f;
 float vesc_angular_velocity_command;
+bool vesc_init = false;
 
 float current_rpm    = 0.0f;
 const float RPM_STEP = 3000.0f;  // 1ステップの加速量
@@ -106,6 +104,20 @@ void loop()
 {
     int32_t rpm  = vesc.get_rpm();
     int32_t taco = vesc.get_taco();
+
+    // 初期化処理
+    if (esc_hub.get_angular_velocities(vesc_velo)) {
+        if (!vesc_init && vesc_velo[1] != 0.0f) {
+            vesc_init = true;
+            do_homing();
+        }
+    }
+
+    if (!vesc_init) {
+        update_heartbeat_led();
+        HAL_Delay(10);
+        return;
+    }
 
     // position処理
     if (abs(rpm) > 500) {
@@ -133,7 +145,7 @@ void loop()
     // スタック判定
     bool stuck = (abs(position) > 1000);
 
-    if (esc_hub.get_angular_velocities(vesc_velo)) {
+    if (esc_hub.get_angular_velocities(vesc_velo) && vesc_velo) {
         HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
         bool is_moving =
             (vesc_velo[0] != 0.0f || vesc_velo[1] != 0.0f || vesc_velo[2] != 0.0f ||
