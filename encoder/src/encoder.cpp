@@ -111,6 +111,16 @@ void loop()
             vesc_init = true;
             do_homing();
         }
+        HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
+        bool is_moving =
+            (vesc_velo[0] != 0.0f || vesc_velo[1] != 0.0f || vesc_velo[2] != 0.0f ||
+             vesc_velo[3] != 0.0f);
+
+        if (is_moving) {
+            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
+        } else {
+            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
+        }
     }
 
     if (!vesc_init) {
@@ -144,19 +154,6 @@ void loop()
 
     // スタック判定
     bool stuck = (abs(position) > 1000);
-
-    if (esc_hub.get_angular_velocities(vesc_velo) && vesc_velo) {
-        HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
-        bool is_moving =
-            (vesc_velo[0] != 0.0f || vesc_velo[1] != 0.0f || vesc_velo[2] != 0.0f ||
-             vesc_velo[3] != 0.0f);
-
-        if (is_moving) {
-            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
-        } else {
-            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
-        }
-    }
 
     // コマンド計算
     vesc_angular_velocity_command = vesc_velo[0] * rpm_conversion_constant;
