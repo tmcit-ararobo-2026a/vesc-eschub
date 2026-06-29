@@ -24,7 +24,7 @@ uint32_t heartbeat_last_toggle_time_ms = 0;
 
 uint8_t motor_num;
 
-int32_t motor_stop_count      = 10;
+int32_t motor_stop_count      = 6;
 float vesc_velo[4]            = {0.0f, 0.0f, 0.0f, 0.0f};
 float rpm_conversion_constant = -45000.0f;
 float target_rpm              = 0.0f;
@@ -66,29 +66,29 @@ void setup()
     fdcan1_driver.init();
     vesc.init();
     HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+    /*
+        while (!esc_hub.get_init(motor_num, motor_config_belt)) {
+            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
+        }
 
-    while (!esc_hub.get_init(motor_num, motor_config_belt)) {
-        HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
-    }
+        HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_RESET);
 
-    HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_RESET);
-
-    do_homing();
+        do_homing();*/
 }
 
 void loop()
-{
-    if (esc_hub.get_angular_velocities(vesc_velo)) {
-        is_moving =
-            (vesc_velo[0] != 0.0f || vesc_velo[1] != 0.0f || vesc_velo[2] != 0.0f ||
-             vesc_velo[3] != 0.0f);
-    }
+{ /*
+     if (esc_hub.get_angular_velocities(vesc_velo)) {
+         is_moving =
+             (vesc_velo[0] != 0.0f || vesc_velo[1] != 0.0f || vesc_velo[2] != 0.0f ||
+              vesc_velo[3] != 0.0f);
+     }
 
-    if (is_moving) {
-        HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
-    } else {
-        HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
-    }
+     if (is_moving) {
+         HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
+     } else {
+         HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
+     }*/
 
     HAL_ADC_Start(&hadc1);                       // 変換開始
     HAL_ADC_PollForConversion(&hadc1, 100);      // 完了待ち
@@ -119,7 +119,45 @@ void loop()
     if (homing) {
         do_homing();
     }
-    update_heartbeat_led();
+
+    switch (rotate_count) {
+        case 0:
+            HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
+            break;
+        case 1:
+            HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
+            break;
+        case 2:
+            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
+            break;
+        case 3:
+            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(LED_4_GPIO_Port, LED_4_Pin, GPIO_PIN_SET);
+            break;
+        case 4:
+            HAL_GPIO_WritePin(LED_4_GPIO_Port, LED_4_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
+            break;
+        case 5:
+            HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
+            break;
+        case 6:
+            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(LED_4_GPIO_Port, LED_4_Pin, GPIO_PIN_SET);
+
+            break;
+        default:
+
+            break;
+    }
+
+    // update_heartbeat_led();
     HAL_Delay(10);
 }
 
