@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "dcache.h"
 #include "fdcan.h"
 #include "icache.h"
@@ -110,6 +111,7 @@ int main(void)
   MX_TIM6_Init();
   MX_ICACHE_Init();
   MX_DCACHE1_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
     setup();
   /* USER CODE END 2 */
@@ -198,7 +200,7 @@ void PeriphCommonClock_Config(void)
 
   /** Initializes the peripherals clock
   */
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_FDCAN;
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADCDAC|RCC_PERIPHCLK_FDCAN;
   PeriphClkInitStruct.PLL2.PLL2Source = RCC_PLL2_SOURCE_CSI;
   PeriphClkInitStruct.PLL2.PLL2M = 1;
   PeriphClkInitStruct.PLL2.PLL2N = 40;

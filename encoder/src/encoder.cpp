@@ -1,11 +1,13 @@
 #include "encoder/encoder.hpp"
 
+#include "adc.h"
 #include "drivers/stm32_fdcan/driver_stm32_fdcan.hpp"
 #include "encoder/fdcan_driver.hpp"
 #include "encoder/vesc_can.hpp"
 #include "gn10_can/core/can_bus.hpp"
 #include "gn10_can/core/fdcan_bus.hpp"
 #include "gn10_can/devices/esc_hub_server.hpp"
+#include "gn10_can/devices/motor_driver_types.hpp"
 #include "stdio.h"
 #include "tim.h"
 
@@ -14,6 +16,7 @@ VescCAN vesc(&hfdcan2);
 
 gn10_can::FDCANBus fdcan1_bus(fdcan1_driver);
 gn10_can::devices::ESCHubServer esc_hub(fdcan1_bus, 0);
+gn10_can::devices::MotorConfig motor_config_belt;
 
 constexpr uint32_t k_heartbeat_toggle_interval_ms = 500;
 
@@ -49,8 +52,13 @@ void do_homing()
 void setup()
 {
     fdcan1_driver.init();
-
     vesc.init();
+    HAL_ADC_Start(&hadc1);
+
+    uint8_t motor_num;
+    while (!esc_hub.get_init(motor_num, motor_config_belt));
+
+    do_homing();
 }
 
 void loop()
