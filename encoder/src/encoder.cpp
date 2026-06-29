@@ -142,8 +142,8 @@ void loop()
     }
 
     // encoder test
-    uint32_t count = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
-    float rotates  = (float)count / encoder_counts_s;
+    int32_t count = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
+    float rotates = (float)count / encoder_counts_s;
 
     if (count > 50000 || count < -50000) {
         __HAL_TIM_SET_COUNTER(&htim3, 0);
