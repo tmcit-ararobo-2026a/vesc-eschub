@@ -76,6 +76,10 @@ void do_homing()
 
 void setup()
 {
+    // encoder settings
+    HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
+    __HAL_TIM_SET_COUNTER(&htim3, 0);
+
     fdcan1_driver.init();
     vesc.init();
     HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
@@ -88,6 +92,8 @@ void setup()
 
     do_homing();
 }
+
+int32_t encoder_counts_s = 16000;
 
 void loop()
 {
@@ -134,6 +140,16 @@ void loop()
     if (homing) {
         do_homing();
     }
+
+    // encoder test
+    uint32_t count = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
+    float rotates  = (float)count / encoder_counts_s;
+
+    if (count > 50000 || count < -50000) {
+        __HAL_TIM_SET_COUNTER(&htim3, 0);
+    }
+    float rotates_test[4] = {rotates, 0.0f, 0.0f, 0.0f};
+    esc_hub.set_angular_velocity_feedbacks(rotates_test);
 
     update_heartbeat_led();
     HAL_Delay(10);
