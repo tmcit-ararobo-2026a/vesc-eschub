@@ -21,7 +21,7 @@ gn10_can::devices::ESCHubServer esc_hub(fdcan1_bus, 0);
 gn10_can::devices::MotorConfig motor_config_belt;
 uint8_t motor_num;
 
-// Hall senser limit settings
+// Hall sensor limit settings
 int32_t motor_stop_count = 6;
 int32_t rotate_count     = 0;
 
@@ -34,7 +34,7 @@ bool is_moving   = false;
 bool magnet_near = false;
 bool homing      = false;
 
-// Voltage threshold for hall senser
+// Voltage threshold for hall sensor
 float voltage_threshold_high = 2.0f;
 float voltage_threshold_low  = 1.7f;
 
@@ -113,13 +113,13 @@ void loop()
         vesc.comm_can_set_rpm(43, 0);
     }
 
-    // Hall senser settings
+    // Hall sensor settings
     HAL_ADC_Start(&hadc1);
     HAL_ADC_PollForConversion(&hadc1, 100);
     int32_t adc_val = HAL_ADC_GetValue(&hadc1);
     float voltage   = (float)adc_val / 4095.0f * 3.3f;
 
-    // Controll Hall senser
+    // Control Hall sensor
     if (voltage > voltage_threshold_high && !magnet_near) {
         rotate_count++;
         magnet_near = true;
