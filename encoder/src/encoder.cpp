@@ -16,22 +16,32 @@ VescCAN vesc(&hfdcan2);
 
 gn10_can::FDCANBus fdcan1_bus(fdcan1_driver);
 gn10_can::devices::ESCHubServer esc_hub(fdcan1_bus, 0);
+
+// These use get init
 gn10_can::devices::MotorConfig motor_config_belt;
-
-constexpr uint32_t k_heartbeat_toggle_interval_ms = 500;
-
-uint32_t heartbeat_last_toggle_time_ms = 0;
-
 uint8_t motor_num;
 
-int32_t motor_stop_count      = 6;
+// Hall senser limit settings
+int32_t motor_stop_count = 6;
+int32_t rotate_count     = 0;
+
 float vesc_velo[4]            = {0.0f, 0.0f, 0.0f, 0.0f};
 float rpm_conversion_constant = -45000.0f;
 float target_rpm              = 0.0f;
-int32_t rotate_count          = 0;
-bool is_moving                = false;
-bool magnet_near              = false;
-bool homing                   = false;
+
+// Control flag
+bool is_moving   = false;
+bool magnet_near = false;
+bool homing      = false;
+
+// Voltage threshold for hall senser
+float voltage_threshold_high = 2.0f;
+float voltage_threshold_low  = 1.7f;
+
+// LED config
+constexpr uint32_t k_heartbeat_toggle_interval_ms = 500;
+uint32_t heartbeat_last_toggle_time_ms            = 0;
+
 /**
  * @brief Toggle heartbeat LED at a fixed interval.
  */
@@ -44,6 +54,9 @@ void update_heartbeat_led()
     }
 }
 
+/**
+ * @brief Set the initial position of the motor.
+ */
 void do_homing()
 {
     while (HAL_GPIO_ReadPin(LIM1_2_GPIO_Port, LIM1_2_Pin) == GPIO_PIN_SET) {
@@ -66,37 +79,32 @@ void setup()
     fdcan1_driver.init();
     vesc.init();
     HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-    /*
-        while (!esc_hub.get_init(motor_num, motor_config_belt)) {
-            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
-        }
 
-        HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_RESET);
+    // Wait until a command arrives
+    while (!esc_hub.get_init(motor_num, motor_config_belt)) {
+        HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
+    }
+    HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_RESET);
 
-        do_homing();*/
+    do_homing();
 }
 
 void loop()
-{ /*
-     if (esc_hub.get_angular_velocities(vesc_velo)) {
-         is_moving =
-             (vesc_velo[0] != 0.0f || vesc_velo[1] != 0.0f || vesc_velo[2] != 0.0f ||
-              vesc_velo[3] != 0.0f);
-     }
+{
+    // if get command,we can see light LED
+    if (esc_hub.get_angular_velocities(vesc_velo)) {
+        is_moving =
+            (vesc_velo[0] != 0.0f || vesc_velo[1] != 0.0f || vesc_velo[2] != 0.0f ||
+             vesc_velo[3] != 0.0f);
+    }
+    if (is_moving) {
+        HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
+    } else {
+        HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
+    }
 
-     if (is_moving) {
-         HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
-     } else {
-         HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
-     }*/
-
-    HAL_ADC_Start(&hadc1);                       // 変換開始
-    HAL_ADC_PollForConversion(&hadc1, 100);      // 完了待ち
-    int32_t adc_val = HAL_ADC_GetValue(&hadc1);  // 値取得
-    float voltage   = (float)adc_val / 4095.0f * 3.3f;
-
+    // Control motor moving
     target_rpm = vesc_velo[0] * rpm_conversion_constant;
-
     if (rotate_count < motor_stop_count) {
         vesc.comm_can_set_rpm(45, target_rpm);
         vesc.comm_can_set_rpm(43, target_rpm);
@@ -105,59 +113,29 @@ void loop()
         vesc.comm_can_set_rpm(43, 0);
     }
 
-    if (voltage > 2.0f && !magnet_near) {
+    // Hall senser settings
+    HAL_ADC_Start(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, 100);
+    int32_t adc_val = HAL_ADC_GetValue(&hadc1);
+    float voltage   = (float)adc_val / 4095.0f * 3.3f;
+
+    // Controll Hall senser
+    if (voltage > voltage_threshold_high && !magnet_near) {
         rotate_count++;
         magnet_near = true;
-    } else if (magnet_near && voltage < 1.7f) {
+    } else if (magnet_near && voltage < voltage_threshold_low) {
         magnet_near = false;
     }
 
+    // Init settings
     if (rotate_count == motor_stop_count) {
         homing = true;
     }
-
     if (homing) {
         do_homing();
     }
 
-    switch (rotate_count) {
-        case 0:
-            HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
-            break;
-        case 1:
-            HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_RESET);
-            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
-            break;
-        case 2:
-            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
-            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
-            break;
-        case 3:
-            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_RESET);
-            HAL_GPIO_WritePin(LED_4_GPIO_Port, LED_4_Pin, GPIO_PIN_SET);
-            break;
-        case 4:
-            HAL_GPIO_WritePin(LED_4_GPIO_Port, LED_4_Pin, GPIO_PIN_RESET);
-            HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
-            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
-            break;
-        case 5:
-            HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
-            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
-            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
-            break;
-        case 6:
-            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_RESET);
-            HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
-            HAL_GPIO_WritePin(LED_4_GPIO_Port, LED_4_Pin, GPIO_PIN_SET);
-
-            break;
-        default:
-
-            break;
-    }
-
-    // update_heartbeat_led();
+    update_heartbeat_led();
     HAL_Delay(10);
 }
 
