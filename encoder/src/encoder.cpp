@@ -155,7 +155,7 @@ void loop()
     HAL_Delay(10);
 }
 
-// canのcallback処理
+// Callback processing
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs)
 {
     if (hfdcan->Instance == hfdcan1.Instance) {
