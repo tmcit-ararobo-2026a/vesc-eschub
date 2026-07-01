@@ -24,11 +24,10 @@ uint8_t motor_num;
 // Hall sensor limit settings
 int32_t motor_stop_count = 1;
 int32_t rotate_count     = 0;
-int32_t enc_count        = 0;
 
-float vesc_velo[4]            = {0.0f, 0.0f, 0.0f, 0.0f};
-float rpm_conversion_constant = -46000.0f;
-float target_rpm              = 0.0f;
+float vesc_velo[4]                      = {0.0f, 0.0f, 0.0f, 0.0f};
+constexpr float rpm_conversion_constant = -46000.0f;
+float target_rpm                        = 0.0f;
 
 // Control flag
 bool is_moving   = false;
@@ -47,8 +46,8 @@ uint32_t heartbeat_last_toggle_time_ms            = 0;
 constexpr uint32_t k_send_anglar_data_interval_ms = 50;
 uint32_t send_anglar_data_last_time_ms            = 0;
 
-int16_t absolute_value      = 0;
-int16_t per_revolution_step = 4000;
+int16_t absolute_value  = 0;
+int16_t per_rotate_step = 4000;
 
 void update_heartbeat_led();
 
@@ -112,7 +111,7 @@ void loop()
     absolute_value += motor_point;
     __HAL_TIM_SET_COUNTER(&htim3, 0);
 
-    rotate_count = absolute_value / per_volution_step;
+    rotate_count = absolute_value / per_rotate_step;
 
     if (rotate_count == motor_stop_count) {
         homing = true;
