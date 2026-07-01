@@ -22,7 +22,7 @@ gn10_can::devices::MotorConfig motor_config_belt;
 uint8_t motor_num;
 
 // Hall sensor limit settings
-int32_t motor_stop_count = 6;
+int32_t motor_stop_count = 1;
 int32_t rotate_count     = 0;
 int32_t enc_count        = 0;
 
@@ -45,10 +45,11 @@ constexpr uint32_t k_heartbeat_toggle_interval_ms = 500;
 uint32_t heartbeat_last_toggle_time_ms            = 0;
 
 // Can send data config
-constexpr uint32_t k_send_anglar_data_interval_ms = 10;
+constexpr uint32_t k_send_anglar_data_interval_ms = 50;
 uint32_t send_anglar_data_last_time_ms            = 0;
 
 int32_t encoder_counts_s = 16000;
+int16_t absolute_value   = 0;
 
 void update_heartbeat_led();
 
@@ -71,6 +72,7 @@ void setup()
         HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
     }
     HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_RESET);
+
     homing = true;
 }
 
@@ -88,16 +90,6 @@ void loop()
         HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
     }
 
-    // Control motor moving
-    target_rpm = vesc_velo[0] * rpm_conversion_constant;
-    if (rotate_count < motor_stop_count && !homing) {
-        vesc.comm_can_set_rpm(45, target_rpm);
-        vesc.comm_can_set_rpm(43, target_rpm);
-    } else {
-        vesc.comm_can_set_rpm(45, 0);
-        vesc.comm_can_set_rpm(43, 0);
-    }
-
     // Hall sensor settings
     HAL_ADC_Start(&hadc1);
     HAL_ADC_PollForConversion(&hadc1, 100);
@@ -112,17 +104,39 @@ void loop()
     }
 
     // Init settings
-    if (rotate_count == motor_stop_count) {
-        homing = true;
-    }
 
     if (homing) {
         do_homing();
     }
 
     // encoder test
-    int16_t motor_point   = static_cast<int16_t>(__HAL_TIM_GET_COUNTER(&htim3));
-    float rotates_test[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    int16_t motor_point = static_cast<int16_t>(__HAL_TIM_GET_COUNTER(&htim3));
+    absolute_value += motor_point;
+    __HAL_TIM_SET_COUNTER(&htim3, 0);
+    if (absolute_value >= 50) {
+        rotate_count++;
+        absolute_value = 0;
+    }
+
+    if (rotate_count == motor_stop_count) {
+        homing = true;
+    }
+
+    float rotates_test[4] = {static_cast<float>(rotate_count), 0.0f, 0.0f, 0.0f};
+
+    // Control motor moving
+    target_rpm = vesc_velo[0] * rpm_conversion_constant;
+
+    if (!homing) {
+        if (rotate_count < motor_stop_count) {
+            vesc.comm_can_set_rpm(45, target_rpm);
+            vesc.comm_can_set_rpm(43, target_rpm);
+        } else {
+            vesc.comm_can_set_rpm(45, 0);
+            vesc.comm_can_set_rpm(43, 0);
+        }
+    }
+
     send_anglar_data(rotates_test);
     update_heartbeat_led();
 }
@@ -160,6 +174,7 @@ void send_anglar_data(float angular_data[4])
     if ((now_ms - send_anglar_data_last_time_ms) >= k_send_anglar_data_interval_ms) {
         send_anglar_data_last_time_ms = now_ms;
         esc_hub.set_angular_velocity_feedbacks(angular_data);
+        HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
     }
 }
 
@@ -175,7 +190,8 @@ void do_homing()
     } else {
         vesc.comm_can_set_rpm(45, 0);
         vesc.comm_can_set_rpm(43, 0);
-        homing = false;
+        homing       = false;
+        rotate_count = 0;
     }
 
     HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_RESET);
