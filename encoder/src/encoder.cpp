@@ -24,9 +24,10 @@ uint8_t motor_num;
 // Hall sensor limit settings
 int32_t motor_stop_count = 6;
 int32_t rotate_count     = 0;
+int32_t enc_count        = 0;
 
 float vesc_velo[4]            = {0.0f, 0.0f, 0.0f, 0.0f};
-float rpm_conversion_constant = -45000.0f;
+float rpm_conversion_constant = -46000.0f;
 float target_rpm              = 0.0f;
 
 // Control flag
@@ -71,6 +72,10 @@ void do_homing()
 
     homing       = false;
     rotate_count = 0;
+    enc_count    = 0;
+
+    __HAL_TIM_SET_COUNTER(&htim3, 0);
+
     HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_RESET);
 }
 
@@ -142,13 +147,21 @@ void loop()
     }
 
     // encoder test
-    int32_t count = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
-    float rotates = (float)count / encoder_counts_s;
+    uint32_t count = __HAL_TIM_GET_COUNTER(&htim3);
 
-    if (count > 50000 || count < -50000) {
+    if (count > 16000) {
+        enc_count++;
         __HAL_TIM_SET_COUNTER(&htim3, 0);
+        count = 0;
+
+        if (enc_count >= 50) {
+            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
+            rotate_count = 6;
+            homing       = true;
+            __HAL_TIM_SET_COUNTER(&htim3, 0);
+        }
     }
-    float rotates_test[4] = {rotates, 0.0f, 0.0f, 0.0f};
+    float rotates_test[4] = {(float)count, 0.0f, 0.0f, 0.0f};
     esc_hub.set_angular_velocity_feedbacks(rotates_test);
 
     update_heartbeat_led();
