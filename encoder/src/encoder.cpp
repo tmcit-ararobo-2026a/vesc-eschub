@@ -43,6 +43,9 @@ float voltage_threshold_low  = 1.7f;
 constexpr uint32_t k_heartbeat_toggle_interval_ms = 500;
 uint32_t heartbeat_last_toggle_time_ms            = 0;
 
+constexpr uint32_t k_send_anglar_data_interval_ms = 10;
+uint32_t send_anglar_data_last_time_ms            = 0;
+
 int32_t encoder_counts_s = 16000;
 
 /**
@@ -54,6 +57,15 @@ void update_heartbeat_led()
     if ((now_ms - heartbeat_last_toggle_time_ms) >= k_heartbeat_toggle_interval_ms) {
         heartbeat_last_toggle_time_ms = now_ms;
         HAL_GPIO_TogglePin(LED_4_GPIO_Port, LED_4_Pin);
+    }
+}
+
+void send_anglar_data(float angular_data[4])
+{
+    const uint32_t now_ms = HAL_GetTick();
+    if ((now_ms - send_anglar_data_last_time_ms) >= k_send_anglar_data_interval_ms) {
+        send_anglar_data_last_time_ms = now_ms;
+        esc_hub.set_angular_velocity_feedbacks(angular_data);
     }
 }
 
@@ -147,25 +159,10 @@ void loop()
     }
 
     // encoder test
-    int16_t count = __HAL_TIM_GET_COUNTER(&htim3);
-
-        if (count > 16000) {
-        enc_count++;
-        __HAL_TIM_SET_COUNTER(&htim3, 0);
-        count = 0;
-
-        if (enc_count >= 50) {
-            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
-            rotate_count = 6;
-            homing       = true;
-            __HAL_TIM_SET_COUNTER(&htim3, 0);
-        }
-    }
-    float rotates_test[4] = {(float)count, 0.0f, 0.0f, 0.0f};
-    esc_hub.set_angular_velocity_feedbacks(rotates_test);
-
+    int16_t motor_point   = static_cast<int16_t>(__HAL_TIM_GET_COUNTER(&htim3));
+    float rotates_test[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    send_anglar_data(rotates_test);
     update_heartbeat_led();
-    HAL_Delay(10);
 }
 
 // Callback processing
