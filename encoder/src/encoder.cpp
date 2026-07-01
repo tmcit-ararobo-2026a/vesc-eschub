@@ -31,10 +31,9 @@ float rpm_conversion_constant = -46000.0f;
 float target_rpm              = 0.0f;
 
 // Control flag
-bool initialization = false;
-bool is_moving      = false;
-bool magnet_near    = false;
-bool homing         = false;
+bool is_moving   = false;
+bool magnet_near = false;
+bool homing      = false;
 
 // Voltage threshold for hall sensor
 float voltage_threshold_high = 2.0f;
@@ -48,8 +47,8 @@ uint32_t heartbeat_last_toggle_time_ms            = 0;
 constexpr uint32_t k_send_anglar_data_interval_ms = 50;
 uint32_t send_anglar_data_last_time_ms            = 0;
 
-int32_t encoder_counts_s = 16000;
-int16_t absolute_value   = 0;
+int16_t absolute_value      = 0;
+int16_t per_revolution_step = 4000;
 
 void update_heartbeat_led();
 
@@ -104,7 +103,6 @@ void loop()
     }
 
     // Init settings
-
     if (homing) {
         do_homing();
     }
@@ -113,16 +111,14 @@ void loop()
     int16_t motor_point = static_cast<int16_t>(__HAL_TIM_GET_COUNTER(&htim3));
     absolute_value += motor_point;
     __HAL_TIM_SET_COUNTER(&htim3, 0);
-    if (absolute_value >= 50) {
-        rotate_count++;
-        absolute_value = 0;
-    }
+
+    rotate_count = absolute_value / per_volution_step;
 
     if (rotate_count == motor_stop_count) {
         homing = true;
     }
 
-    float rotates_test[4] = {static_cast<float>(rotate_count), 0.0f, 0.0f, 0.0f};
+    float rotates_test[4] = {static_cast<float>(motor_point), 0.0f, 0.0f, 0.0f};
 
     // Control motor moving
     target_rpm = vesc_velo[0] * rpm_conversion_constant;
@@ -191,8 +187,9 @@ void do_homing()
     } else {
         vesc.comm_can_set_rpm(45, 0);
         vesc.comm_can_set_rpm(43, 0);
-        homing       = false;
-        rotate_count = 0;
+        homing         = false;
+        rotate_count   = 0;
+        absolute_value = 0;
     }
 
     HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_RESET);
