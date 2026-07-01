@@ -43,6 +43,8 @@ float voltage_threshold_low  = 1.7f;
 constexpr uint32_t k_heartbeat_toggle_interval_ms = 500;
 uint32_t heartbeat_last_toggle_time_ms            = 0;
 
+int32_t encoder_counts_s = 16000;
+
 /**
  * @brief Toggle heartbeat LED at a fixed interval.
  */
@@ -98,8 +100,6 @@ void setup()
     do_homing();
 }
 
-int32_t encoder_counts_s = 16000;
-
 void loop()
 {
     // if get command,we can see light LED
@@ -147,9 +147,9 @@ void loop()
     }
 
     // encoder test
-    uint32_t count = __HAL_TIM_GET_COUNTER(&htim3);
+    int16_t count = __HAL_TIM_GET_COUNTER(&htim3);
 
-    if (count > 16000) {
+        if (count > 16000) {
         enc_count++;
         __HAL_TIM_SET_COUNTER(&htim3, 0);
         count = 0;
